@@ -1,129 +1,172 @@
-import React, { useState } from 'react';
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { useState, useEffect } from 'react';
 
-const App = () => {
-  const [jugadores, setJugadores] = useState(obtenerJugadores());
-  const [nuevoJugador, setNuevoJugador] = useState({ id: '', nombre: '', titular: false, posicion: '' });
-  const [mensaje, setMensaje] = useState('');
+function App() {
+  // Estados para manejar la lista de jugadores y los campos del formulario
+  const [jugadores, setJugadores] = useState([]);
+  const [nuevoJugadorId, setNuevoJugadorId] = useState('');
+  const [nuevoJugadorNombre, setNuevoJugadorNombre] = useState('');
+  const [nuevoJugadorTitular, setNuevoJugadorTitular] = useState(false);
+  const [nuevoJugadorPosicion, setNuevoJugadorPosicion] = useState('');
+  const [editandoJugador, setEditandoJugador] = useState(null);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setNuevoJugador({ ...nuevoJugador, [name]: value });
+  // Manejador para actualizar el estado del ID cuando se escribe en el input
+  const handleNuevoJugadorId = (e) => {
+    setNuevoJugadorId(e.target.value);
   };
 
-  const handleAddJugador = () => {
-    if (esClaveUnica(nuevoJugador.id)) {
-      agregarJugador(nuevoJugador);
-      setJugadores(obtenerJugadores());
-      setMensaje('Jugador agregado exitosamente');
-    } else {
-      setMensaje('Error: El ID del jugador ya existe');
-    }
+  // Manejador para actualizar el estado del nombre cuando se escribe en el input
+  const handleNuevoJugadorNombre = (e) => {
+    setNuevoJugadorNombre(e.target.value);
   };
 
-  const handleDeleteJugador = (id) => {
-    eliminarJugador(id);
-    setJugadores(obtenerJugadores());
-    setMensaje('Jugador eliminado exitosamente');
+  // Manejador para actualizar el estado del titular cuando se marca el checkbox
+  const handleNuevoJugadorTitular = (e) => {
+    setNuevoJugadorTitular(e.target.checked);
   };
 
-  const handleEditJugador = (jugadorActualizado) => {
-    actualizarJugador(jugadorActualizado);
-    setJugadores(obtenerJugadores());
-    setMensaje('Jugador actualizado exitosamente');
+  // Manejador para actualizar el estado de la posición cuando se escribe en el input
+  const handleNuevoJugadorPosicion = (e) => {
+    setNuevoJugadorPosicion(e.target.value);
   };
+
+  // Función para agregar un nuevo jugador
+  const handleAgregarJugador = () => {
+    // Crear objeto con los datos del nuevo jugador
+    const nuevoJugador = {
+      id: nuevoJugadorId,
+      nombre: nuevoJugadorNombre,
+      titular: nuevoJugadorTitular,
+      posicion: nuevoJugadorPosicion
+    };
+    console.log('Datos del jugador nuevo:', nuevoJugador);
+
+    // Actualizar el estado de jugadores y guardar en localStorage
+    setJugadores(prev => {
+      const nuevoArreglo = [...prev, nuevoJugador];
+      localStorage.setItem("jugadores", JSON.stringify(nuevoArreglo));
+      return nuevoArreglo;
+    });
+
+    // Limpiar los campos del formulario después de agregar
+    setNuevoJugadorId('');
+    setNuevoJugadorNombre('');
+    setNuevoJugadorTitular(false);
+    setNuevoJugadorPosicion('');
+  };
+
+  // Función para eliminar un jugador
+  const handleEliminarJugador = (idJugador) => {
+    setJugadores(prev => {
+      const resultadosEliminados = prev.filter(objeto => objeto.id !== idJugador);
+      localStorage.setItem("jugadores", JSON.stringify(resultadosEliminados));
+      return resultadosEliminados;
+    });
+  };
+
+  // Función para iniciar la edición de un jugador
+  const handleEditarJugador = (jugador) => {
+    setEditandoJugador(jugador);
+    setNuevoJugadorId(jugador.id);
+    setNuevoJugadorNombre(jugador.nombre);
+    setNuevoJugadorTitular(jugador.titular);
+    setNuevoJugadorPosicion(jugador.posicion);
+  };
+
+  // Función para guardar los cambios de la edición
+  const handleGuardarEdicion = () => {
+    setJugadores(prev => {
+      const jugadoresActualizados = prev.map(j => 
+        j.id === editandoJugador.id ? { ...j, id: nuevoJugadorId, nombre: nuevoJugadorNombre, titular: nuevoJugadorTitular, posicion: nuevoJugadorPosicion } : j
+      );
+      localStorage.setItem("jugadores", JSON.stringify(jugadoresActualizados));
+      return jugadoresActualizados;
+    });
+
+    // Resetear el estado de edición y limpiar los campos
+    setEditandoJugador(null);
+    setNuevoJugadorId('');
+    setNuevoJugadorNombre('');
+    setNuevoJugadorTitular(false);
+    setNuevoJugadorPosicion('');
+  };
+
+  // Función para cancelar la edición
+  const handleCancelarEdicion = () => {
+    setEditandoJugador(null);
+    setNuevoJugadorId('');
+    setNuevoJugadorNombre('');
+    setNuevoJugadorTitular(false);
+    setNuevoJugadorPosicion('');
+  };
+
+  // Efecto que se ejecuta al montar el componente para cargar jugadores desde localStorage
+  useEffect(() => {
+    const jugadoresAlmacenados = JSON.parse(localStorage.getItem("jugadores") || "[]");
+    setJugadores(jugadoresAlmacenados);
+    console.log("Jugadores cargados desde localStorage:", jugadoresAlmacenados);
+  }, []);
 
   return (
-    <div className="container mt-4">
-      <h1 className="text-center">Gestión de Jugadores del Real Madrid</h1>
-      {mensaje && <div className="alert alert-info">{mensaje}</div>}
-      <div className="row">
-        <div className="col-md-6 offset-md-3">
-          <form>
-            <div className="form-group">
-              <label>ID del Jugador (int)</label>
-              <input
-                type="number"
-                name="id"
-                value={nuevoJugador.id}
-                onChange={handleInputChange}
-                className="form-control"
-              />
-            </div>
-            <div className="form-group">
-              <label>Nombre del Jugador (str)</label>
-              <input
-                type="text"
-                name="nombre"
-                value={nuevoJugador.nombre}
-                onChange={handleInputChange}
-                className="form-control"
-              />
-            </div>
-            <div className="form-group form-check">
-              <input
-                type="checkbox"
-                name="titular"
-                checked={nuevoJugador.titular}
-                onChange={(e) => setNuevoJugador({ ...nuevoJugador, titular: e.target.checked })}
-                className="form-check-input"
-              />
-              <label className="form-check-label">Titular (bool)</label>
-            </div>
-            <div className="form-group">
-              <label>Posición del Jugador (str)</label>
-              <input
-                type="text"
-                name="posicion"
-                value={nuevoJugador.posicion}
-                onChange={handleInputChange}
-                className="form-control"
-              />
-            </div>
-            <button type="button" onClick={handleAddJugador} className="btn btn-primary btn-block">Agregar Jugador</button>
-          </form>
-          <ul className="list-group mt-4">
-            {jugadores.map(jugador => (
-              <li key={jugador.id} className="list-group-item d-flex justify-content-between align-items-center">
-                {JSON.stringify(jugador)}
-                <div>
-                  <button onClick={() => handleEditJugador(jugador)} className="btn btn-warning btn-sm mr-2">Editar</button>
-                  <button onClick={() => handleDeleteJugador(jugador.id)} className="btn btn-danger btn-sm">Eliminar</button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+    <div style={{ padding: '10px' }}>
+      {/* Formulario para agregar/editar jugadores */}
+      <div>
+        <form onSubmit={(e) => e.preventDefault()}>
+          <label htmlFor="id_jugador">ID Jugador</label><br />
+          <input
+            type="number"
+            value={nuevoJugadorId}
+            onChange={handleNuevoJugadorId}
+            name="id_jugador"
+          /><br /><br />
+          <label htmlFor="nombre_jugador">Nombre del Jugador</label><br />
+          <input
+            type="text"
+            value={nuevoJugadorNombre}
+            onChange={handleNuevoJugadorNombre}
+            name="nombre_jugador"
+            placeholder="Ingrese el nombre del jugador"
+          /><br /><br />
+          <label htmlFor="titular_jugador">Titular</label><br />
+          <input
+            type="checkbox"
+            checked={nuevoJugadorTitular}
+            onChange={handleNuevoJugadorTitular}
+            name="titular_jugador"
+          /><br /><br />
+          <label htmlFor="posicion_jugador">Posición del Jugador</label><br />
+          <input
+            type="text"
+            value={nuevoJugadorPosicion}
+            onChange={handleNuevoJugadorPosicion}
+            name="posicion_jugador"
+            placeholder="Ingrese la posición del jugador"
+          /><br /><br />
+          {editandoJugador ? (
+            <>
+              <button type="button" style={{ marginRight: '10px' }} onClick={handleGuardarEdicion}>Guardar Cambios</button>
+              <button type="button" onClick={handleCancelarEdicion}>Cancelar</button>
+            </>
+          ) : (
+            <button type="button" onClick={handleAgregarJugador}>Añadir Jugador</button>
+          )}
+        </form>
+        <hr />
+      </div>
+      {/* Lista de jugadores */}
+      <div>
+        <h3>Lista de Jugadores</h3>
+        <ul>
+          {jugadores.map((jug) => (
+            <li key={jug.id}>
+              ID: {jug.id}, NOMBRE: {jug.nombre}, TITULAR: {jug.titular ? 'Sí' : 'No'}, POSICIÓN: {jug.posicion}
+              <button type="button" onClick={() => handleEditarJugador(jug)} style={{ marginLeft: '10px', marginRight: '10px' }}>Editar</button>
+              <button type="button" onClick={() => handleEliminarJugador(jug.id)}>Eliminar</button>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
-};
-
-// Funciones de manejo de localStorage
-const obtenerJugadores = () => JSON.parse(localStorage.getItem('jugadores')) || [];
-const setJugadores = (jugadores) => localStorage.setItem('jugadores', JSON.stringify(jugadores));
-
-const agregarJugador = (jugador) => {
-  const jugadores = obtenerJugadores();
-  jugadores.push(jugador);
-  setJugadores(jugadores);
-};
-
-const actualizarJugador = (jugadorActualizado) => {
-  const jugadores = obtenerJugadores();
-  const index = jugadores.findIndex(jugador => jugador.id === jugadorActualizado.id);
-  if (index !== -1) {
-    jugadores[index] = jugadorActualizado;
-    setJugadores(jugadores);
-  }
-};
-
-const eliminarJugador = (id) => {
-  let jugadores = obtenerJugadores();
-  jugadores = jugadores.filter(jugador => jugador.id !== id);
-  setJugadores(jugadores);
-};
-
-const esClaveUnica = (id) => !obtenerJugadores().some(jugador => jugador.id === id);
+}
 
 export default App;
